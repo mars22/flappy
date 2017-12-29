@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/veandco/go-sdl2/img"
 	"github.com/veandco/go-sdl2/sdl"
@@ -13,9 +14,11 @@ const (
 )
 
 type bird struct {
+	mu       sync.RWMutex
 	time     int
 	textures []*sdl.Texture
 	y, speed float64
+	dead     bool
 }
 
 func newBird(r *sdl.Renderer) (*bird, error) {
@@ -31,18 +34,47 @@ func newBird(r *sdl.Renderer) (*bird, error) {
 	return &bird{textures: textures, y: 300, speed: 0}, nil
 }
 
-func (b *bird) paint(r *sdl.Renderer) error {
+func (b *bird) update() {
+	//Lock for write
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	b.time++
 	b.y -= b.speed
 	b.speed += gravity
 	if b.y < 0 {
-		b.y = 0
-		b.speed = -b.speed
+		b.dead = true
 	}
 	maxY := float64(600 - 43/2)
 	if b.y >= maxY {
 		b.y = maxY
 	}
+}
+
+func (b *bird) restart() {
+	//Lock for write
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.time = 0
+	b.y = 300
+	b.speed = 0
+	b.dead = false
+
+}
+
+func (b *bird) isDead() bool {
+	//Lock for read
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	return b.dead
+}
+
+func (b *bird) paint(r *sdl.Renderer) error {
+	//Lock for read
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 
 	// we gonna animate birds 10 time slower then rest of the scene
 	i := b.time / 10 % len(b.textures)
@@ -54,10 +86,18 @@ func (b *bird) paint(r *sdl.Renderer) error {
 }
 
 func (b *bird) jump() {
+	//Lock for write
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	b.speed = jumpSpeed
 }
 
 func (b *bird) destroy() {
+	//Lock for write
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	for _, texture := range b.textures {
 		texture.Destroy()
 	}
