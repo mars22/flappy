@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -39,20 +40,24 @@ func run() error {
 	if err := drawTitle(renderer); err != nil {
 		return fmt.Errorf("couldn't drawTitle %v", err)
 	}
-	time.Sleep(5 * time.Second)
+	time.Sleep(time.Second)
 
 	scene, err := newScene(renderer)
 
 	if err != nil {
 		return fmt.Errorf("couldn't create scene  %v", err)
 	}
-
 	defer scene.destroy()
 
-	scene.paint(renderer)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	time.Sleep(5 * time.Second)
-	return nil
+	select {
+	case err := <-scene.run(ctx, renderer):
+		return err
+	case <-time.After(5 * time.Second):
+		return nil
+	}
 
 }
 
