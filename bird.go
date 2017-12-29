@@ -7,9 +7,12 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+const gravity = 0.2
+
 type bird struct {
 	time     int
 	textures []*sdl.Texture
+	y, speed float64
 }
 
 func newBird(r *sdl.Renderer) (*bird, error) {
@@ -22,14 +25,20 @@ func newBird(r *sdl.Renderer) (*bird, error) {
 		}
 		textures = append(textures, texture)
 	}
-	return &bird{textures: textures}, nil
+	return &bird{textures: textures, y: 300, speed: 0}, nil
 }
 
 func (b *bird) paint(r *sdl.Renderer) error {
 	b.time++
+	b.y -= b.speed
+	b.speed += gravity
+	if b.y < 0 {
+		b.y = 0
+		b.speed = -b.speed
+	}
 	// we gonna animate birds 10 time slower then rest of the scene
 	i := b.time / 10 % len(b.textures)
-	rec := sdl.Rect{X: 0, Y: 300 - 43/2, W: 50, H: 43}
+	rec := sdl.Rect{X: 0, Y: (600 - int32(b.y)) - 43/2, W: 50, H: 43}
 	if err := r.Copy(b.textures[i], nil, &rec); err != nil {
 		return fmt.Errorf("can't copy texture to the current rendering target %v", err)
 	}
