@@ -63,6 +63,9 @@ func (s *scene) handleEvent(event sdl.Event) bool {
 	switch e := event.(type) {
 	case *sdl.QuitEvent:
 		return true
+	case *sdl.MouseButtonEvent:
+		s.bird.jump()
+		return false
 	default:
 		log.Printf("unknown event: %T", e)
 		return false

@@ -7,7 +7,10 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-const gravity = 0.2
+const (
+	gravity   = 0.2
+	jumpSpeed = -5
+)
 
 type bird struct {
 	time     int
@@ -36,6 +39,11 @@ func (b *bird) paint(r *sdl.Renderer) error {
 		b.y = 0
 		b.speed = -b.speed
 	}
+	maxY := float64(600 - 43/2)
+	if b.y >= maxY {
+		b.y = maxY
+	}
+
 	// we gonna animate birds 10 time slower then rest of the scene
 	i := b.time / 10 % len(b.textures)
 	rec := sdl.Rect{X: 0, Y: (600 - int32(b.y)) - 43/2, W: 50, H: 43}
@@ -43,6 +51,10 @@ func (b *bird) paint(r *sdl.Renderer) error {
 		return fmt.Errorf("can't copy texture to the current rendering target %v", err)
 	}
 	return nil
+}
+
+func (b *bird) jump() {
+	b.speed = jumpSpeed
 }
 
 func (b *bird) destroy() {
