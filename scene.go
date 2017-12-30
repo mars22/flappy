@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/veandco/go-sdl2/img"
@@ -10,9 +9,10 @@ import (
 )
 
 type scene struct {
-	time int
-	bg   *sdl.Texture
-	bird *bird
+	time  int
+	bg    *sdl.Texture
+	bird  *bird
+	pipes *pipes
 }
 
 func loadTexture(r *sdl.Renderer, file string) (*sdl.Texture, error) {
@@ -33,7 +33,12 @@ func newScene(r *sdl.Renderer) (*scene, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can't load bird %v", err)
 	}
-	scene := &scene{bg: bgTexture, bird: bird}
+
+	pipes, err := newPipes(r)
+	if err != nil {
+		return nil, fmt.Errorf("can't load bird %v", err)
+	}
+	scene := &scene{bg: bgTexture, bird: bird, pipes: pipes}
 	return scene, nil
 }
 
@@ -51,6 +56,7 @@ func (s *scene) run(events <-chan sdl.Event, r *sdl.Renderer) <-chan error {
 			case <-tick:
 				s.update()
 				if s.bird.isDead() {
+					time.Sleep(1 * time.Second)
 					if err := drawTitle(r, "Game Over"); err != nil {
 						errc <- err
 					}
@@ -68,14 +74,14 @@ func (s *scene) run(events <-chan sdl.Event, r *sdl.Renderer) <-chan error {
 }
 
 func (s *scene) handleEvent(event sdl.Event) bool {
-	switch e := event.(type) {
+	switch event.(type) {
 	case *sdl.QuitEvent:
 		return true
 	case *sdl.MouseButtonEvent:
 		s.bird.jump()
 		return false
 	default:
-		log.Printf("unknown event: %T", e)
+		// log.Printf("unknown event: %T", e)
 		return false
 	}
 
@@ -83,10 +89,13 @@ func (s *scene) handleEvent(event sdl.Event) bool {
 
 func (s *scene) update() {
 	s.bird.update()
+	s.pipes.update()
+	s.pipes.touch(s.bird)
 }
 
 func (s *scene) restart() {
 	s.bird.restart()
+	s.pipes.restart()
 }
 
 func (s *scene) paint(r *sdl.Renderer) error {
@@ -99,6 +108,9 @@ func (s *scene) paint(r *sdl.Renderer) error {
 	if err := s.bird.paint(r); err != nil {
 		return err
 	}
+	if err := s.pipes.paint(r); err != nil {
+		return err
+	}
 	r.Present()
 	return nil
 }
@@ -106,4 +118,5 @@ func (s *scene) paint(r *sdl.Renderer) error {
 func (s *scene) destroy() {
 	s.bg.Destroy()
 	s.bird.destroy()
+	s.pipes.destroy()
 }

@@ -37,7 +37,7 @@ func run() error {
 	}
 	defer window.Destroy()
 
-	if err := drawTitle(renderer, "Flappy"); err != nil {
+	if err := drawTitle(renderer, "Flappy gopher"); err != nil {
 		return fmt.Errorf("couldn't drawTitle %v", err)
 	}
 	time.Sleep(time.Second)

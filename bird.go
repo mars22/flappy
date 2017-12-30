@@ -9,16 +9,17 @@ import (
 )
 
 const (
-	gravity   = 0.2
-	jumpSpeed = -5
+	gravity   = 0.1
+	jumpSpeed = -2
 )
 
 type bird struct {
-	mu       sync.RWMutex
-	time     int
-	textures []*sdl.Texture
-	y, speed float64
-	dead     bool
+	mu         sync.RWMutex
+	time       int
+	textures   []*sdl.Texture
+	x, y, w, h int32
+	speed      float64
+	dead       bool
 }
 
 func newBird(r *sdl.Renderer) (*bird, error) {
@@ -31,21 +32,25 @@ func newBird(r *sdl.Renderer) (*bird, error) {
 		}
 		textures = append(textures, texture)
 	}
-	return &bird{textures: textures, y: 300, speed: 0}, nil
+	return &bird{textures: textures, x: 10, y: 500, h: 43, w: 50, speed: 0}, nil
+}
+
+func (b *bird) isBellyTouching(y int32) bool {
+	return b.y-b.h/3 < y
 }
 
 func (b *bird) update() {
-	//Lock for write
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
 	b.time++
-	b.y -= b.speed
+	b.y -= int32(b.speed)
 	b.speed += gravity
-	if b.y < 0 {
+	if b.isBellyTouching(0) {
 		b.dead = true
 	}
-	maxY := float64(600 - 43/2)
+
+	maxY := (600 - b.h/2)
 	if b.y >= maxY {
 		b.y = maxY
 	}
@@ -63,42 +68,45 @@ func (b *bird) restart() {
 
 }
 
-func (b *bird) isDead() bool {
-	//Lock for read
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	return b.dead
-}
-
 func (b *bird) paint(r *sdl.Renderer) error {
-	//Lock for read
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
 	// we gonna animate birds 10 time slower then rest of the scene
 	i := b.time / 10 % len(b.textures)
-	rec := sdl.Rect{X: 0, Y: (600 - int32(b.y)) - 43/2, W: 50, H: 43}
+	rec := sdl.Rect{X: b.x, Y: (600 - b.y) - b.h/2, W: b.w, H: b.h}
 	if err := r.Copy(b.textures[i], nil, &rec); err != nil {
 		return fmt.Errorf("can't copy texture to the current rendering target %v", err)
 	}
 	return nil
 }
 
-func (b *bird) jump() {
-	//Lock for write
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	b.speed = jumpSpeed
-}
-
 func (b *bird) destroy() {
-	//Lock for write
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
 	for _, texture := range b.textures {
 		texture.Destroy()
 	}
+}
+
+func (b *bird) isDead() bool {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	return b.dead
+}
+
+func (b *bird) setDead() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.dead = true
+}
+
+func (b *bird) jump() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.speed = jumpSpeed
 }
